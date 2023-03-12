@@ -1,0 +1,90 @@
+- hosts: maquinaCliente
+  gather_facts: no
+  vars:
+    diret_base: /home/<user>/Downloads
+    diret_script: /home/<user>/Downloads/remote/
+    usuario: <user>
+
+  tasks:
+    - name: Copiar scriptsRemote
+      ansible.builtin.copy:
+        src: remote
+        dest: "{{ diret_base }}"
+        owner: "{{ usuario }}"
+        group: "{{ usuario }}"
+
+
+    - name: Proxy apt
+      shell: echo 'Acquire::http::Proxy "http://<ip>:<port>";' > /etc/apt/apt.conf
+
+    - name: Instalar pacotes rdesktop
+      ansible.builtin.apt:
+        pkg:
+          - rdesktop
+          - libxcb-keysyms1
+          - libxcb-randr0
+          - libxcb-image0
+          - libxcb-xtest0
+          - ibus
+          - libxcb-xinerama0
+          - libxkbcommon-x11-0
+          - desktop-file-utils
+        state: latest
+        update_cache: yes
+
+    - name: Permissoes
+      ansible.builtin.file:
+        path: "{{ diret_script }}"
+        state: directory
+        owner: "{{ usuario }}"
+        group: "{{ usuario }}"
+        mode: '0775'
+        recurse: true
+    
+    - name: Upgrade Zoom packages local
+      package:
+        deb: /home/<user>/Downloads/remote/zoom_amd64.deb
+
+    - name: Copiar os arquivos necessario para rdp
+      ansible.builtin.copy:
+        src: "{{ item }}"         
+        dest: /home/<user>/script/.idesktop/
+        owner: root
+        group: root
+        mode: 0755
+      with_fileglob:
+        - "remote/rdp*"
+
+    - name: Inserir hostname e ip no hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: 127.0.1.1      hostCliente
+        owner: root
+        group: root
+        mode: '0644' 
+    
+    - name: Inserir hostname no hostname
+      ansible.builtin.lineinfile:
+        path: /etc/hostname
+        regexp: '<user>'
+        line:  hostCliente
+        owner: root
+        group: root
+        mode: '0644' 
+    
+    - name: Esse serviÃ§o foi criado para nÃ£o dar erro no rm
+      ansible.builtin.file:
+        path: /home/<user>/.config/chromium-orig/SingletonTeste
+        state: touch
+        mode: u=rwx,g=rwx,o=rw
+
+    - name: remover informaÃ§Ãµes do hostname no browser
+      shell: rm /home/<user>/.config/chromium-orig/Singleton*
+
+    - name: reboot host(s)
+      ansible.builtin.reboot:
+        msg: "Reboot para carregar configuraÃ§Ãµes"
+        pre_reboot_delay: 5
+        post_reboot_delay: 10
+        test_command: "whoami" 

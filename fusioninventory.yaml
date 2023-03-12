@@ -1,0 +1,88 @@
+- hosts: maquinaCliente
+  gather_facts: no
+  vars:
+    diret_base: /home/<usuario>/Downloads
+    diret_apt: /etc/apt
+    diret_fusion:  /etc/fusioninventory
+    usuario: <usuario>
+  tasks:
+    - name: Copiar scriptsRemote
+      ansible.builtin.copy:
+        src: remote
+        dest: "{{ diret_base }}"
+        owner: "{{ usuario }}"
+        group: "{{ usuario }}"
+
+    - name: Proxy apt
+      shell: echo 'Acquire::http::Proxy "http://<ip>:<port>";' > {{ diret_apt }}/apt.conf
+
+    - name: Inserir source no apt
+      shell: |
+        echo 'deb http://ftp.br.debian.org/debian/ stretch main
+        deb-src http://ftp.br.debian.org/debian/ stretch main
+        deb http://security.debian.org/debian-security stretch/updates main
+        deb-src http://security.debian.org/debian-security stretch/updates main
+        deb http://ftp.br.debian.org/debian/ stretch-updates main
+        deb-src http://ftp.br.debian.org/debian/ stretch-updates main
+        ' > {{ diret_apt }}/sources.list
+    - name: Adicionar servidor fusion para hosts caso ele nÃ£o exista cria
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: <ip_servidor>  srv-glpi
+        create: yes   
+   
+    - name: apt do fusionagente
+      ansible.builtin.apt:
+        pkg:
+          - libnet-cups-perl
+          - libnet-ip-perl
+          - libparse-edid-perl
+          - libproc-daemon-perl
+          - libuniversal-require-perl
+          - libfile-which-perl
+          - libxml-treepp-perl
+          - libxml-xpath-perl
+          - libyaml-perl
+          - libtext-template-perl
+          - hwdata
+          - libyaml-tiny-perl
+          - libsocket-getaddrinfo-perl
+
+        state: fixed
+        update_cache: yes
+    - name: Install fusion agente via deb
+      package:
+        deb: /home/<usuario>/Downloads/remote/fusioninventory-agent_2.6-1_all.deb
+  
+    - name: Copiar cfg fusion
+      ansible.builtin.copy:
+        src: remote/agent.cfg         
+        dest: /etc/fusioninventory
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
+
+    - name: Touch a file, using symbolic modes to set the permissions (equivalent to 0644)
+      ansible.builtin.file:
+        path: /var/log/fusioninventory.log
+        state: touch
+        mode: u=rw,g=r,o=r
+
+    - name: Restart service fusioninventory, in all cases
+      ansible.builtin.service:
+        name: fusioninventory-agent
+        state: restarted
+
+    - name: Proxy apt
+      shell: echo 'Acquire::http::Proxy " ";' > {{ diret_apt }}/apt.conf
+
+    - name: Inserir source no apt
+      shell: |
+        echo '#deb http://ftp.br.debian.org/debian/ stretch main
+        #deb-src http://ftp.br.debian.org/debian/ stretch main
+        #deb http://security.debian.org/debian-security stretch/updates main
+        #deb-src http://security.debian.org/debian-security stretch/updates main
+        #deb http://ftp.br.debian.org/debian/ stretch-updates main
+        #deb-src http://ftp.br.debian.org/debian/ stretch-updates main
+        ' > {{ diret_apt }}/sources.list
