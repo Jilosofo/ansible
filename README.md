@@ -5,7 +5,7 @@
 ** $ansible -i hosts all -m ping
 ## Comando que ajuda auxialiar nas configuração na hora de criação do ansible
 'ansible -i hosts oracle -m setup -k -K' 
-ansible -i hosts debian12 -m setup -k -K' 
+'ansible -i hosts debian12 -m setup -k -K' 
 
 ## Verificar erros de sintaxe
 `ansible-playbook playbooks/PLAYBOOK_NAME.yml --syntax-check`
